@@ -334,6 +334,15 @@ function attachGlobalListeners(): void {
       return;
     }
 
+    if (t.closest('#org-refresh-btn')) {
+      const loading = document.getElementById('org-loading');
+      const content = document.getElementById('org-content');
+      if (loading) loading.style.display = '';
+      if (content) { content.style.display = 'none'; content.innerHTML = ''; }
+      fetchAndRenderOrgLimits();
+      return;
+    }
+
     // Log item click
     const logItem = t.closest<HTMLElement>('.log-item');
     if (logItem?.dataset['logId']) {

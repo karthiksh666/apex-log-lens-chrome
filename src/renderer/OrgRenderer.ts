@@ -34,17 +34,13 @@ export function renderOrgSkeleton(connected: boolean, displayName?: string | nul
           <div class="org-name">${displayName ? escHtml(displayName) : 'Connected Org'}</div>
           <div class="org-sub">Live data — updates each time you open this tab</div>
         </div>
-        <button class="action-btn" id="org-refresh-btn" onclick="window.orgTabRefresh && window.orgTabRefresh()">
-          ↻ Refresh
-        </button>
+        <button class="action-btn" id="org-refresh-btn">↻ Refresh</button>
       </div>
 
       <div id="org-loading" class="org-loading">
         <span>Loading org data…</span>
       </div>
-      <div id="org-content" style="display:none">
-        <!-- Populated by main.ts when orgData message arrives -->
-      </div>
+      <div id="org-content" style="display:none"></div>
     </div>
   `;
 }
