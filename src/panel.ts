@@ -464,12 +464,16 @@ function openLogInNewTab(log: ParsedLog): void {
 
 function fetchAndRenderOrgLimits(): void {
   chrome.runtime.sendMessage({ type: 'fetchOrgLimits' }, (res: { limits?: { key: string; displayName: string; max: number; remaining: number; used: number; percentUsed: number; severity: string }[]; error?: string }) => {
-    if (chrome.runtime.lastError || !res) return;
     const loading = document.getElementById('org-loading');
     const content = document.getElementById('org-content');
     if (!loading || !content) return;
     loading.style.display = 'none';
     content.style.display = '';
+
+    if (chrome.runtime.lastError || !res) {
+      content.innerHTML = `<div class="list-error">⚠ ${escHtml(chrome.runtime.lastError?.message ?? 'No response from service worker')}</div>`;
+      return;
+    }
     if (res.error) {
       content.innerHTML = `<div class="list-error">⚠ ${escHtml(res.error)}</div>`;
       return;
