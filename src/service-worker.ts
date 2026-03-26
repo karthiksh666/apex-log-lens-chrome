@@ -12,7 +12,7 @@
  */
 
 import { SalesforceClient, SalesforceApiError } from './salesforce/SalesforceClient';
-import { validateAndIdentify, fetchLogList, fetchLogBody } from './salesforce/LogFetcher';
+import { validateAndIdentify, fetchLogList, fetchLogBody, fetchOrgLimits } from './salesforce/LogFetcher';
 import { parseLog } from './parser/index';
 
 // ── In-memory session ─────────────────────────────────────────────────────────
@@ -60,6 +60,10 @@ chrome.runtime.onMessage.addListener((msg: Record<string, unknown>, _sender, sen
 
     case 'fetchLog':
       void handleFetchLog(msg.logId as string, msg.sizeBytes as number, sendResponse);
+      return true;
+
+    case 'fetchOrgLimits':
+      void handleFetchOrgLimits(sendResponse);
       return true;
 
     case 'disconnect':
@@ -111,6 +115,15 @@ async function handleFetchLogs(sendResponse: (r: unknown) => void): Promise<void
     sendResponse({ logs: logs.map(l => ({ ...l, lastModified: l.lastModified.toISOString() })) });
   } catch (err) {
     sendResponse({ error: err instanceof SalesforceApiError ? err.message : 'Failed to fetch logs' });
+  }
+}
+
+async function handleFetchOrgLimits(sendResponse: (r: unknown) => void): Promise<void> {
+  try {
+    const limits = await fetchOrgLimits();
+    sendResponse({ limits });
+  } catch (err) {
+    sendResponse({ error: err instanceof SalesforceApiError ? err.message : 'Failed to fetch org limits' });
   }
 }
 

@@ -111,3 +111,36 @@ export async function fetchLogBody(logId: string): Promise<string> {
     `/services/data/${API_VERSION}/tooling/sobjects/ApexLog/${logId}/Body`
   );
 }
+
+// ── Org limits ────────────────────────────────────────────────────────────────
+
+export interface OrgLimitEntry {
+  key: string;
+  displayName: string;
+  max: number;
+  remaining: number;
+  used: number;
+  percentUsed: number;
+  severity: 'ok' | 'warning' | 'critical';
+}
+
+export async function fetchOrgLimits(): Promise<OrgLimitEntry[]> {
+  const raw = await SalesforceClient.get<Record<string, { Max: number; Remaining: number }>>(
+    `/services/data/${API_VERSION}/limits`
+  );
+
+  return Object.entries(raw)
+    .filter(([, v]) => v.Max > 0)
+    .map(([key, v]) => {
+      const used = v.Max - v.Remaining;
+      const percentUsed = Math.round((used / v.Max) * 100);
+      const severity: 'ok' | 'warning' | 'critical' =
+        percentUsed >= 80 ? 'critical' : percentUsed >= 50 ? 'warning' : 'ok';
+      return { key, displayName: camelToLabel(key), max: v.Max, remaining: v.Remaining, used, percentUsed, severity };
+    })
+    .sort((a, b) => b.percentUsed - a.percentUsed);
+}
+
+function camelToLabel(s: string): string {
+  return s.replace(/([A-Z])/g, ' $1').replace(/^./, c => c.toUpperCase()).trim();
+}

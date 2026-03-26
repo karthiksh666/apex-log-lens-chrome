@@ -247,7 +247,7 @@ function setupViewer(log: ParsedLog): void {
     issues:     () => renderIssues(log),
     data:       () => renderData(log),
     automation: () => renderAutomation(log),
-    limits:     () => renderLimits(log, false, null),
+    limits:     () => renderLimits(log, !!_identity, _identity?.displayName ?? null),
     callouts:   () => renderCallouts(log),
     debug:      () => renderDebug(log),
     raw:        () => renderRaw(log),
@@ -260,6 +260,7 @@ function setupViewer(log: ParsedLog): void {
     const el = document.getElementById(`tab-${id}`);
     if (el && renders[id]) el.innerHTML = renders[id]();
     if (id === 'flow') setupTxLazyLoad(log);
+    if (id === 'limits' && _identity) fetchAndRenderOrgLimits();
   }
 
   // Auto-jump to issues if errors present
@@ -427,6 +428,40 @@ async function fetchLogs(): Promise<void> {
     if (res?.logs)  { _logs = res.logs; }
     else            { _logError = res?.error ?? 'Failed to fetch logs'; }
     if (_screen === 'home') renderBody();
+  });
+}
+
+function fetchAndRenderOrgLimits(): void {
+  chrome.runtime.sendMessage({ type: 'fetchOrgLimits' }, (res: { limits?: { key: string; displayName: string; max: number; remaining: number; used: number; percentUsed: number; severity: string }[]; error?: string }) => {
+    if (chrome.runtime.lastError || !res) return;
+    const loading = document.getElementById('org-loading');
+    const content = document.getElementById('org-content');
+    if (!loading || !content) return;
+    loading.style.display = 'none';
+    content.style.display = '';
+    if (res.error) {
+      content.innerHTML = `<div class="list-error">⚠ ${escHtml(res.error)}</div>`;
+      return;
+    }
+    const limits = res.limits ?? [];
+    if (limits.length === 0) {
+      content.innerHTML = `<p style="color:var(--fg-muted);font-size:12px;padding:8px 0">No limit data returned.</p>`;
+      return;
+    }
+    content.innerHTML = `<div class="limits-grid">${limits.map(l => `
+      <div class="limit-card limit-${l.severity}">
+        <div class="limit-header">
+          <span class="limit-icon">${l.severity === 'critical' ? '🚨' : l.severity === 'warning' ? '⚠' : '✅'}</span>
+          <span class="limit-name">${escHtml(l.displayName)}</span>
+        </div>
+        <div class="limit-bar-track">
+          <div class="limit-bar-fill limit-${l.severity}-fill" style="width:${Math.min(l.percentUsed, 100)}%"></div>
+        </div>
+        <div class="limit-footer">
+          <span class="limit-used">${l.used.toLocaleString()} / ${l.max.toLocaleString()}</span>
+          <span class="limit-percent">${l.percentUsed}%</span>
+        </div>
+      </div>`).join('')}</div>`;
   });
 }
 
