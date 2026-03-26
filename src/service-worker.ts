@@ -48,11 +48,8 @@ chrome.runtime.onMessage.addListener((msg: Record<string, unknown>, _sender, sen
       return true; // keep channel open for async response
 
     case 'getStatus':
-      sendResponse({
-        connected:   SalesforceClient.isConnected,
-        identity:    _identity,
-      });
-      return false;
+      void handleGetStatus(sendResponse);
+      return true;
 
     case 'fetchLogs':
       void handleFetchLogs(sendResponse);
@@ -69,6 +66,7 @@ chrome.runtime.onMessage.addListener((msg: Record<string, unknown>, _sender, sen
     case 'disconnect':
       SalesforceClient.clear();
       _identity = null;
+      void chrome.storage.session.remove('sf_identity');
       sendResponse({ ok: true });
       return false;
   }
@@ -110,6 +108,7 @@ async function handlePageDetected(instanceUrl: string, sendResponse: (r: unknown
     const identity = await validateAndIdentify(instanceUrl, cookie.value);
     SalesforceClient.init(instanceUrl, cookie.value);
     _identity = identity;
+    void chrome.storage.session.set({ sf_identity: identity });
     sendResponse({ connected: true, identity });
 
     // Notify any open panels
@@ -130,6 +129,16 @@ async function handleFetchLogs(sendResponse: (r: unknown) => void): Promise<void
   } catch (err) {
     sendResponse({ error: err instanceof SalesforceApiError ? err.message : 'Failed to fetch logs' });
   }
+}
+
+async function handleGetStatus(sendResponse: (r: unknown) => void): Promise<void> {
+  await SalesforceClient.restore();
+  if (SalesforceClient.isConnected && !_identity) {
+    // Restore identity from storage too
+    const data = await chrome.storage.session.get('sf_identity');
+    if (data['sf_identity']) _identity = data['sf_identity'] as Identity;
+  }
+  sendResponse({ connected: SalesforceClient.isConnected, identity: _identity });
 }
 
 async function handleFetchOrgLimits(sendResponse: (r: unknown) => void): Promise<void> {
