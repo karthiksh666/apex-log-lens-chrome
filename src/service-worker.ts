@@ -85,9 +85,23 @@ async function handlePageDetected(instanceUrl: string, sendResponse: (r: unknown
     return;
   }
 
-  // Try to grab the sid cookie for this domain
+  // Try to grab the sid cookie — check multiple URL variants since Lightning
+  // pages run on *.force.com but the cookie is set on *.salesforce.com
   try {
-    const cookie = await chrome.cookies.get({ url: instanceUrl, name: 'sid' });
+    const urlsToTry = [instanceUrl];
+    const hostname = new URL(instanceUrl).hostname;
+    // myorg.my.salesforce.com → also try https://myorg.salesforce.com
+    if (hostname.endsWith('.my.salesforce.com')) {
+      const short = hostname.replace(/\.my\.salesforce\.com$/, '.salesforce.com');
+      urlsToTry.push(`https://${short}`);
+    }
+
+    let cookie: chrome.cookies.Cookie | null = null;
+    for (const url of urlsToTry) {
+      cookie = await chrome.cookies.get({ url, name: 'sid' });
+      if (cookie?.value) break;
+    }
+
     if (!cookie?.value) {
       sendResponse({ connected: false });
       return;

@@ -6,15 +6,33 @@
  * No data is read from the page DOM — only window.location is used.
  */
 
-const instanceUrl = `${window.location.protocol}//${window.location.hostname}`;
+const hostname = window.location.hostname;
 
-// Only act on actual org pages (not login.salesforce.com, developer-edition, etc.)
-if (
-  window.location.hostname.endsWith('.salesforce.com') ||
-  window.location.hostname.endsWith('.force.com')
-) {
+// Skip login, developer docs, etc.
+const isOrgPage =
+  hostname.endsWith('.salesforce.com') ||
+  hostname.endsWith('.force.com');
+
+if (isOrgPage) {
+  // Lightning pages run on *.lightning.force.com but the API/cookie domain
+  // is *.my.salesforce.com — resolve it so the service worker can find the sid cookie.
+  let instanceUrl = `${window.location.protocol}//${hostname}`;
+
+  // e.g. myorg.lightning.force.com → https://myorg.my.salesforce.com
+  const lightningMatch = hostname.match(/^([^.]+)\.lightning\.force\.com$/);
+  if (lightningMatch) {
+    instanceUrl = `https://${lightningMatch[1]}.my.salesforce.com`;
+  }
+
+  // e.g. myorg--partial.sandbox.lightning.force.com → keep host, swap suffix
+  const sandboxLightningMatch = hostname.match(/^(.+)\.lightning\.force\.com$/);
+  if (!lightningMatch && sandboxLightningMatch) {
+    instanceUrl = `https://${sandboxLightningMatch[1]}.my.salesforce.com`;
+  }
+
   chrome.runtime.sendMessage({
     type:        'sfPageDetected',
     instanceUrl: instanceUrl,
+    pageUrl:     `${window.location.protocol}//${hostname}`,
   });
 }
