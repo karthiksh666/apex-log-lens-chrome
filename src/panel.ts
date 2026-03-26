@@ -207,20 +207,22 @@ function renderViewerScreen(log: ParsedLog): string {
   )].length;
 
   const tabs = [
-    { id: 'flow',       label: '⚡ Execution',  badge: null,        error: log.summary.errorCount > 0 },
-    { id: 'issues',     label: '🚨 Issues',     badge: log.summary.errorCount, error: log.summary.errorCount > 0 },
-    { id: 'data',       label: '🗄 Data',       badge: null,        error: false },
-    { id: 'automation', label: '⚙ Auto',        badge: null,        error: false },
-    { id: 'limits',     label: '📊 Limits',     badge: null,        error: log.governorLimits.hasCritical },
-    { id: 'callouts',   label: '🌐 Callouts',   badge: callCount || null,   error: false },
-    { id: 'debug',      label: '🐛 Debug',      badge: dbgCount || null,    error: false },
-    { id: 'raw',        label: '📄 Raw',        badge: null,        error: false },
+    { id: 'flow',       label: 'Execution',  icon: '⚡', badge: null,                    error: log.summary.errorCount > 0 },
+    { id: 'issues',     label: 'Issues',     icon: '🚨', badge: log.summary.errorCount,  error: log.summary.errorCount > 0 },
+    { id: 'data',       label: 'Data',       icon: '🗄', badge: null,                    error: false },
+    { id: 'automation', label: 'Automation', icon: '⚙', badge: null,                    error: false },
+    { id: 'limits',     label: 'Limits',     icon: '📊', badge: null,                    error: log.governorLimits.hasCritical },
+    { id: 'callouts',   label: 'Callouts',   icon: '🌐', badge: callCount || null,       error: false },
+    { id: 'debug',      label: 'Debug',      icon: '🐛', badge: dbgCount || null,        error: false },
+    { id: 'raw',        label: 'Raw',        icon: '📄', badge: null,                    error: false },
   ];
 
   const tabBtns = tabs.map((t, i) => /* html */`
     <button class="tab-btn ${i === 0 ? 'active' : ''} ${t.error ? 'tab-has-errors' : ''}"
             data-tab="${t.id}" role="tab" aria-selected="${i === 0}">
-      ${t.label}${t.badge ? ` <span class="tab-badge ${t.error ? 'tab-badge-error' : ''}">${t.badge}</span>` : ''}
+      <span class="tab-icon">${t.icon}</span>
+      <span class="tab-label">${t.label}</span>
+      ${t.badge ? `<span class="tab-badge ${t.error ? 'tab-badge-error' : ''}">${t.badge}</span>` : ''}
     </button>`).join('');
 
   const tabPanes = tabs.map((t, i) => /* html */`

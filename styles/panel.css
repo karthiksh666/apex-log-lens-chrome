@@ -201,8 +201,27 @@ code { background: rgba(255,255,255,0.07); padding: 1px 5px; border-radius: 3px;
 .viewer-screen { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
 .viewer-screen .sflog-app { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
 
-/* Tab bar: shrink buttons to fit, scroll if still too wide */
-.viewer-screen .tab-btn { flex: 1 1 0; min-width: 0; overflow: hidden; font-size: 10.5px; padding: 7px 4px; }
+/* Tab bar: fixed-width scrollable, no text truncation */
+.viewer-screen .tab-bar {
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-mask-image: linear-gradient(to right, black 80%, transparent 100%);
+  mask-image: linear-gradient(to right, black 80%, transparent 100%);
+}
+.viewer-screen .tab-bar::-webkit-scrollbar { display: none; }
+.viewer-screen .tab-btn {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 10px 5px;
+  min-width: 52px;
+  font-size: 10px;
+  letter-spacing: 0.02em;
+}
+.viewer-screen .tab-btn .tab-icon  { font-size: 14px; line-height: 1; }
+.viewer-screen .tab-btn .tab-label { font-size: 9.5px; opacity: 0.85; white-space: nowrap; }
 
 /* Tab panes: override viewer.css absolute positioning — use normal flow instead */
 .viewer-screen .tab-content { flex: 1; overflow-y: auto; position: static; }
