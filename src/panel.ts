@@ -89,7 +89,10 @@ function render(): void {
         <span class="header-title">APEX</span>
         <span class="header-title header-title-accent">LOG LENS</span>
       </div>
-      <button class="btn btn-ghost btn-sm" id="btn-back" style="display:none;margin-left:auto">← Back</button>
+      <div style="display:flex;gap:4px;margin-left:auto">
+        <button class="btn btn-ghost btn-sm" id="btn-popout" style="display:none" title="Open in new tab">⤢</button>
+        <button class="btn btn-ghost btn-sm" id="btn-back" style="display:none">← Back</button>
+      </div>
     </header>
     <div id="panel-body"></div>
   `;
@@ -103,10 +106,12 @@ function renderBody(): void {
     body.innerHTML = renderViewerScreen(_currentLog);
     setupViewer(_currentLog);
     document.getElementById('btn-back')!.style.display = '';
+    document.getElementById('btn-popout')!.style.display = '';
   } else {
     _screen = 'home';
     body.innerHTML = renderHomeScreen();
     document.getElementById('btn-back')!.style.display = 'none';
+    document.getElementById('btn-popout')!.style.display = 'none';
   }
 }
 
@@ -321,6 +326,11 @@ function attachGlobalListeners(): void {
       return;
     }
 
+    if (t.closest('#btn-popout') && _currentLog) {
+      openLogInNewTab(_currentLog);
+      return;
+    }
+
     if (t.closest('#btn-disconnect')) {
       chrome.runtime.sendMessage({ type: 'disconnect' });
       _connected = false; _identity = null; _logs = [];
@@ -428,6 +438,28 @@ async function fetchLogs(): Promise<void> {
     else            { _logError = res?.error ?? 'Failed to fetch logs'; }
     if (_screen === 'home') renderBody();
   });
+}
+
+function openLogInNewTab(log: ParsedLog): void {
+  const logName = log.filePath.split('/').pop() ?? 'Apex Log';
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <title>${escHtml(logName)}</title>
+  <link rel="stylesheet" href="${chrome.runtime.getURL('styles/panel.css')}"/>
+  <link rel="stylesheet" href="${chrome.runtime.getURL('styles/viewer.css')}"/>
+</head>
+<body>
+  <div class="sflog-app" style="padding:16px;max-width:1200px;margin:0 auto">
+    ${renderSummaryHeader(log)}
+    <div class="tab-content" style="margin-top:16px">${renderTransactions(log)}</div>
+  </div>
+</body>
+</html>`;
+  const blob = new Blob([html], { type: 'text/html' });
+  const url  = URL.createObjectURL(blob);
+  window.open(url, '_blank');
 }
 
 function fetchAndRenderOrgLimits(): void {

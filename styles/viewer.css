@@ -149,22 +149,27 @@ code, pre, .detail-mono, .query-text, .raw-text {
   background: var(--vscode-tab-inactiveBackground);
   flex-shrink: 0;
   overflow-x: auto;
+  scrollbar-width: none;
 }
+.tab-bar::-webkit-scrollbar { display: none; }
 
 .tab-btn {
-  padding: 8px 16px;
+  flex: 1 0 auto;
+  padding: 7px 10px;
   border: none;
   border-bottom: 2px solid transparent;
   background: transparent;
   color: var(--vscode-tab-inactiveForeground);
   cursor: pointer;
-  font-size: 13px;
+  font-size: 11px;
   white-space: nowrap;
   display: flex;
   align-items: center;
-  gap: 6px;
+  justify-content: center;
+  gap: 4px;
   transition: background 0.15s, color 0.15s, border-color 0.2s;
   position: relative;
+  min-width: 0;
 }
 .tab-btn:hover {
   background: var(--vscode-tab-hoverBackground);
