@@ -120,22 +120,12 @@ function renderHomeScreen(): string {
 function renderDisconnected(): string {
   return /* html */`
     <div class="connect-screen">
-      <div class="connect-icon-wrap">
-        <svg viewBox="0 0 48 48" fill="none" class="connect-cloud-icon">
-          <path d="M36 20.12A12 12 0 1 0 20.49 34H36a8 8 0 0 0 0-16z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
-          <line x1="24" y1="38" x2="24" y2="44" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-          <line x1="18" y1="44" x2="30" y2="44" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-        </svg>
-      </div>
-      <p class="connect-tagline">
-        Navigate to any Salesforce org in this tab — Apex Log Lens will connect automatically.
-      </p>
-      <div class="connect-divider"><span>How it works</span></div>
-      <ul class="connect-steps">
-        <li><span class="step-num">1</span>Open any <code>*.salesforce.com</code> page</li>
-        <li><span class="step-num">2</span>Logs load automatically from your session</li>
-        <li><span class="step-num">3</span>Click any log to analyze it here</li>
-      </ul>
+      <svg viewBox="0 0 48 48" fill="none" class="connect-cloud-icon">
+        <path d="M36 20.12A12 12 0 1 0 20.49 34H36a8 8 0 0 0 0-16z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
+        <line x1="24" y1="38" x2="24" y2="44" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        <line x1="18" y1="44" x2="30" y2="44" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      <p class="connect-tagline">Open your Salesforce org in this tab to connect automatically.</p>
     </div>`;
 }
 
