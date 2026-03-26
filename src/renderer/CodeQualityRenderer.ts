@@ -75,7 +75,7 @@ function renderIssueCard(issue: QualityIssue): string {
     <div class="cq-card cq-${issue.severity}" id="${issue.id}">
 
       <!-- Card header -->
-      <div class="cq-card-header" onclick="this.closest('.cq-card').classList.toggle('cq-expanded')">
+      <div class="cq-card-header" data-toggle-cq>
         <span class="cq-sev-icon">${sevIcon}</span>
         <div class="cq-card-title-group">
           <div class="cq-card-title">${escHtml(issue.title)}</div>

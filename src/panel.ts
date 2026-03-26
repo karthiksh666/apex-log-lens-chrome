@@ -375,6 +375,13 @@ function attachGlobalListeners(): void {
       return;
     }
 
+    // Code quality card toggle
+    const cqHeader = t.closest('[data-toggle-cq]') as HTMLElement | null;
+    if (cqHeader) {
+      cqHeader.closest('.cq-card')?.classList.toggle('cq-expanded');
+      return;
+    }
+
     // Viewer interactions
     handleViewerClick(e);
   });

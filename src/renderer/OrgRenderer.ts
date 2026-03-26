@@ -19,9 +19,6 @@ export function renderOrgSkeleton(connected: boolean, displayName?: string | nul
         <p style="font-size:12px;opacity:0.6;margin-top:6px;max-width:360px;text-align:center">
           Connect to your org to see live governor limits, license usage, and org-level quotas.
         </p>
-        <button class="action-btn" style="margin-top:16px" onclick="acquireVsCodeApiSingleton().postMessage({type:'openConnectCommand'})">
-          Connect to Org…
-        </button>
       </div>
     `;
   }
