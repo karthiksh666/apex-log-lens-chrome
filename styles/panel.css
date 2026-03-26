@@ -200,7 +200,14 @@ code { background: rgba(255,255,255,0.07); padding: 1px 5px; border-radius: 3px;
 /* ── Viewer screen override ──────────────────────────────────────────────────── */
 .viewer-screen { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
 .viewer-screen .sflog-app { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-.viewer-screen .tab-content { flex: 1; overflow-y: auto; }
+
+/* Tab bar: shrink buttons to fit, scroll if still too wide */
+.viewer-screen .tab-btn { flex: 1 1 0; min-width: 0; overflow: hidden; font-size: 10.5px; padding: 7px 4px; }
+
+/* Tab panes: override viewer.css absolute positioning — use normal flow instead */
+.viewer-screen .tab-content { flex: 1; overflow-y: auto; position: static; }
+.viewer-screen .tab-pane    { position: static; inset: unset; overflow-y: visible; padding: 12px; }
+.viewer-screen .tab-pane.hidden { display: none; }
 
 /* Override VS Code-specific variables for Chrome dark theme */
 .sflog-app {
