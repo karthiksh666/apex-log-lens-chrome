@@ -4,15 +4,41 @@
 ────────────────────────────────────────────────────────────────────────────── */
 
 :root {
+  /* ── App tokens ── */
   --accent:       #00d4ff;
   --accent-dim:   #0097bb;
   --accent-glow:  rgba(0,212,255,0.18);
   --bg:           #0d0e14;
   --bg-card:      #13141c;
   --bg-input:     #1a1b26;
-  --border:       rgba(255,255,255,0.07);
+  --border:       rgba(255,255,255,0.08);
   --fg:           #c9d1d9;
   --fg-muted:     #6b737f;
+
+  /* ── VS Code variable shims — used by viewer.css (webview.css copy) ── */
+  --vscode-foreground:                    #c9d1d9;
+  --vscode-editor-background:             #0d0e14;
+  --vscode-panel-border:                  rgba(255,255,255,0.08);
+  --vscode-font-family:                   'SF Mono', 'Menlo', 'Consolas', monospace;
+  --vscode-font-size:                     13px;
+  --vscode-errorForeground:               #ff4d4d;
+  --vscode-textCodeBlock-background:      #13141c;
+  --vscode-sideBar-background:            #0f1017;
+  --vscode-input-background:              #1a1b26;
+  --vscode-input-foreground:              #c9d1d9;
+  --vscode-scrollbarSlider-background:    rgba(255,255,255,0.1);
+  --vscode-scrollbarSlider-hoverBackground: rgba(255,255,255,0.2);
+  --vscode-button-background:             #00d4ff;
+  --vscode-button-foreground:             #0d0e14;
+  --vscode-descriptionForeground:         #6b737f;
+  --vscode-badge-background:              rgba(0,212,255,0.18);
+  --vscode-badge-foreground:              #00d4ff;
+  --cat-apex:    #60a5fa;
+  --cat-trigger: #f97316;
+  --cat-flow:    #a78bfa;
+  --cat-db:      #34d399;
+  --cat-callout: #fbbf24;
+  --cat-limits:  #f43f5e;
   --red:          #ff4d4d;
   --green:        #3dd68c;
   --yellow:       #ffc107;
@@ -27,8 +53,8 @@
 html, body { height: 100%; }
 
 body {
-  background: var(--bg);
-  color: var(--fg);
+  background: var(--bg) !important;
+  color: var(--fg) !important;
   font-family: var(--font);
   font-size: var(--font-size);
   overflow-x: hidden;
@@ -117,9 +143,9 @@ body {
 .btn-icon-only { padding: 4px 7px; font-size: 15px; }
 
 /* ── Connect screen ──────────────────────────────────────────────────────────── */
-.connect-screen { padding: 20px 16px; display: flex; flex-direction: column; align-items: center; gap: 14px; animation: fadeSlideIn 0.35s ease both; }
-.connect-cloud-icon { width: 52px; height: 52px; color: var(--accent-dim); opacity: 0.6; }
-.connect-tagline { font-size: 12px; color: var(--fg-muted); text-align: center; line-height: 1.6; }
+.connect-screen { padding: 24px 18px; display: flex; flex-direction: column; align-items: center; gap: 16px; animation: fadeSlideIn 0.35s ease both; }
+.connect-cloud-icon { width: 64px; height: 64px; color: var(--accent); opacity: 0.7; filter: drop-shadow(0 0 12px var(--accent-glow)); }
+.connect-tagline { font-size: 12.5px; color: var(--fg-muted); text-align: center; line-height: 1.65; max-width: 260px; }
 .connect-divider { width: 100%; display: flex; align-items: center; gap: 8px; }
 .connect-divider::before, .connect-divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
 .connect-divider span { font-size: 10.5px; color: var(--fg-muted); letter-spacing: 0.05em; white-space: nowrap; }
