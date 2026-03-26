@@ -1,0 +1,197 @@
+/* ──────────────────────────────────────────────────────────────────────────────
+   Apex Log Lens — Chrome Side Panel
+   Adapts the VS Code home sidebar styles for the Chrome panel context
+────────────────────────────────────────────────────────────────────────────── */
+
+:root {
+  --accent:       #00d4ff;
+  --accent-dim:   #0097bb;
+  --accent-glow:  rgba(0,212,255,0.18);
+  --bg:           #0d0e14;
+  --bg-card:      #13141c;
+  --bg-input:     #1a1b26;
+  --border:       rgba(255,255,255,0.07);
+  --fg:           #c9d1d9;
+  --fg-muted:     #6b737f;
+  --red:          #ff4d4d;
+  --green:        #3dd68c;
+  --yellow:       #ffc107;
+  --radius:       8px;
+  --radius-sm:    5px;
+  --font:         'SF Mono', 'Menlo', 'Consolas', monospace;
+  --font-size:    13px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body { height: 100%; }
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font);
+  font-size: var(--font-size);
+  overflow-x: hidden;
+  user-select: text;
+  min-width: 320px;
+}
+
+#app { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+#panel-body { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
+
+/* ── Animations ────────────────────────────────────────────────────────────── */
+
+@keyframes lensShine {
+  0%   { transform: translateX(-120%) skewX(-20deg); opacity: 0; }
+  40%  { opacity: 0.9; }
+  100% { transform: translateX(220%) skewX(-20deg); opacity: 0; }
+}
+@keyframes headerIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.45; }
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes glowPulse {
+  0%, 100% { box-shadow: 0 0 0 0 var(--accent-glow); }
+  50%       { box-shadow: 0 0 0 5px transparent; }
+}
+@keyframes logItemIn {
+  from { opacity: 0; transform: translateX(-6px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* ── Header ────────────────────────────────────────────────────────────────── */
+
+.home-header {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--border);
+  animation: headerIn 0.4s ease both;
+  position: relative;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.home-header::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 30%, rgba(0,212,255,0.12) 50%, transparent 70%);
+  transform: translateX(-120%) skewX(-20deg);
+  animation: lensShine 3.5s 0.3s ease-in-out both;
+  pointer-events: none;
+}
+.header-lens-icon { width: 20px; height: 20px; color: var(--accent); filter: drop-shadow(0 0 5px var(--accent)); flex-shrink: 0; }
+.header-text-wrap { display: flex; flex-direction: column; line-height: 1.15; flex: 1; }
+.header-title { font-size: 12px; font-weight: 700; letter-spacing: 0.12em; color: var(--fg); text-transform: uppercase; }
+.header-title-accent {
+  background: linear-gradient(90deg, var(--accent), #a78bfa);
+  -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 6px rgba(0,212,255,0.4));
+}
+
+/* ── Boot spinner ────────────────────────────────────────────────────────────── */
+.boot-spinner { display: flex; align-items: center; justify-content: center; height: 80px; }
+.spinner { width: 18px; height: 18px; border: 2px solid rgba(0,212,255,0.2); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
+.spinner-sm { width: 12px; height: 12px; }
+.spin { display: inline-block; animation: spin 0.7s linear infinite; }
+
+/* ── Buttons ─────────────────────────────────────────────────────────────────── */
+.btn { display: inline-flex; align-items: center; gap: 6px; border: none; border-radius: var(--radius-sm); cursor: pointer; font-family: var(--font); font-size: var(--font-size); transition: background 0.15s, transform 0.1s; }
+.btn:active { transform: scale(0.97); }
+.btn-primary { padding: 8px 18px; background: linear-gradient(135deg, var(--accent) 0%, #7c3aed 100%); color: #0d0e14; font-weight: 700; width: 100%; justify-content: center; box-shadow: 0 0 16px var(--accent-glow); animation: glowPulse 3s ease-in-out infinite; }
+.btn-ghost { padding: 4px 8px; background: transparent; color: var(--fg-muted); border: 1px solid transparent; }
+.btn-ghost:hover { background: rgba(255,255,255,0.06); color: var(--fg); border-color: var(--border); }
+.btn-sm { font-size: 11px; padding: 3px 7px; }
+.btn-icon-only { padding: 4px 7px; font-size: 15px; }
+
+/* ── Connect screen ──────────────────────────────────────────────────────────── */
+.connect-screen { padding: 20px 16px; display: flex; flex-direction: column; align-items: center; gap: 14px; animation: fadeSlideIn 0.35s ease both; }
+.connect-cloud-icon { width: 52px; height: 52px; color: var(--accent-dim); opacity: 0.6; }
+.connect-tagline { font-size: 12px; color: var(--fg-muted); text-align: center; line-height: 1.6; }
+.connect-divider { width: 100%; display: flex; align-items: center; gap: 8px; }
+.connect-divider::before, .connect-divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+.connect-divider span { font-size: 10.5px; color: var(--fg-muted); letter-spacing: 0.05em; white-space: nowrap; }
+.connect-steps { list-style: none; width: 100%; display: flex; flex-direction: column; gap: 8px; }
+.connect-steps li { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--fg-muted); }
+.step-num { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; background: var(--accent-glow); border: 1px solid var(--accent-dim); color: var(--accent); font-size: 10px; font-weight: 700; flex-shrink: 0; }
+code { background: rgba(255,255,255,0.07); padding: 1px 5px; border-radius: 3px; font-family: var(--font); }
+
+/* ── Org bar ─────────────────────────────────────────────────────────────────── */
+.org-bar { display: flex; align-items: center; justify-content: space-between; padding: 8px 14px; border-bottom: 1px solid var(--border); animation: fadeSlideIn 0.3s ease both; flex-shrink: 0; }
+.org-info { display: flex; align-items: center; gap: 7px; min-width: 0; }
+.org-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); box-shadow: 0 0 6px var(--green); flex-shrink: 0; animation: pulse 2.5s ease-in-out infinite; }
+.org-text { display: flex; flex-direction: column; min-width: 0; }
+.org-name { font-size: 12px; font-weight: 600; color: var(--fg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.org-domain { font-size: 10.5px; color: var(--fg-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ── Log toolbar ─────────────────────────────────────────────────────────────── */
+.log-toolbar { display: flex; align-items: center; gap: 4px; padding: 6px 8px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.log-search { flex: 1; background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--fg); font-family: var(--font); font-size: 12px; padding: 4px 8px; outline: none; transition: border-color 0.15s; }
+.log-search:focus { border-color: var(--accent-dim); box-shadow: 0 0 0 2px var(--accent-glow); }
+.log-search::placeholder { color: var(--fg-muted); }
+
+/* ── Log list ────────────────────────────────────────────────────────────────── */
+.log-list { overflow-y: auto; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.1) transparent; }
+.log-list::-webkit-scrollbar { width: 4px; }
+.log-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+
+.log-item { display: flex; align-items: center; gap: 8px; padding: 8px 14px; cursor: pointer; border-bottom: 1px solid var(--border); transition: background 0.12s; animation: logItemIn 0.25s ease both; }
+.log-item:hover { background: rgba(0,212,255,0.05); }
+.log-item:hover .log-chevron { color: var(--accent); transform: translateX(2px); }
+.log-item-opening { background: rgba(0,212,255,0.08); }
+.log-status-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.dot-ok   { background: var(--green); box-shadow: 0 0 4px var(--green); }
+.dot-warn { background: var(--yellow); }
+.dot-err  { background: var(--red); box-shadow: 0 0 4px var(--red); }
+.log-item-body { flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.log-op { font-size: 12px; font-weight: 500; color: var(--fg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.log-meta { font-size: 10.5px; color: var(--fg-muted); white-space: nowrap; }
+.log-chevron { font-size: 16px; color: var(--fg-muted); transition: color 0.12s, transform 0.12s; flex-shrink: 0; }
+.log-open-spinner { display: flex; align-items: center; flex-shrink: 0; }
+
+/* ── Empty / loading / error ─────────────────────────────────────────────────── */
+.list-loading { display: flex; align-items: center; gap: 10px; padding: 20px 14px; color: var(--fg-muted); font-size: 12px; }
+.list-empty { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 28px 14px; color: var(--fg-muted); text-align: center; }
+.empty-icon { font-size: 26px; opacity: 0.45; }
+.list-empty p { font-size: 12px; line-height: 1.6; }
+.list-error { padding: 12px 14px; color: var(--red); font-size: 12px; background: rgba(255,77,77,0.07); border-left: 3px solid var(--red); margin: 8px; border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
+
+/* ── Footer ──────────────────────────────────────────────────────────────────── */
+.footer-note { padding: 6px 14px; font-size: 10px; color: var(--fg-muted); opacity: 0.5; text-align: center; border-top: 1px solid var(--border); flex-shrink: 0; margin-top: auto; }
+
+/* ── Viewer screen override ──────────────────────────────────────────────────── */
+.viewer-screen { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.viewer-screen .sflog-app { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.viewer-screen .tab-content { flex: 1; overflow-y: auto; }
+
+/* Override VS Code-specific variables for Chrome dark theme */
+.sflog-app {
+  --vscode-foreground: #c9d1d9;
+  --vscode-editor-background: #0d0e14;
+  --vscode-panel-border: rgba(255,255,255,0.07);
+  --vscode-font-family: 'SF Mono', 'Menlo', 'Consolas', monospace;
+  --vscode-font-size: 13px;
+  --vscode-errorForeground: #ff4d4d;
+  --vscode-textCodeBlock-background: #13141c;
+  --vscode-sideBar-background: #0f1017;
+  --vscode-input-background: #1a1b26;
+  --vscode-scrollbarSlider-background: rgba(255,255,255,0.1);
+  --vscode-scrollbarSlider-hoverBackground: rgba(255,255,255,0.2);
+}
+
+/* ── Scrollbar ───────────────────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }

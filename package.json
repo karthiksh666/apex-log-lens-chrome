@@ -1,0 +1,16 @@
+{
+  "name": "apex-log-lens-chrome",
+  "version": "0.1.0",
+  "description": "Apex Log Lens — Chrome Extension for Salesforce Apex debug log analysis",
+  "private": true,
+  "scripts": {
+    "build": "node esbuild.config.mjs",
+    "watch": "node esbuild.config.mjs --watch",
+    "zip": "npm run build && cd dist && zip -r ../apex-log-lens-chrome.zip . && cd .."
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.268",
+    "esbuild": "^0.21.0",
+    "typescript": "^5.4.0"
+  }
+}

@@ -1,0 +1,473 @@
+/**
+ * Side panel UI script.
+ *
+ * Two screens:
+ *  1. Home  — org status + log list (auto-connected, auto-refresh)
+ *  2. Viewer — full log analysis (tabs: Execution, Issues, Data, …)
+ *             with a Back button to return to Home
+ */
+
+import type { ParsedLog } from './parser/types';
+import { renderSummaryHeader }  from './components/SummaryHeader';
+import { renderTransactions, renderTransactionCard, TX_SCROLL_BATCH } from './renderer/TransactionRenderer';
+import { renderIssues }         from './renderer/IssuesRenderer';
+import { renderData }           from './renderer/DataRenderer';
+import { renderAutomation }     from './renderer/AutomationRenderer';
+import { renderCallouts }       from './renderer/CalloutsRenderer';
+import { renderDebug }          from './renderer/DebugRenderer';
+import { renderLimits }         from './renderer/LimitsRenderer';
+import { renderRaw }            from './renderer/RawRenderer';
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+interface OrgIdentity {
+  userId: string; userName: string; displayName: string;
+  instanceUrl: string; orgId: string;
+}
+
+interface SerializedLogEntry {
+  id: string; sizeBytes: number; lastModified: string;
+  status: string; operation: string; application: string;
+  durationMs: number; location: string;
+}
+
+// ── State ─────────────────────────────────────────────────────────────────────
+
+type Screen = 'home' | 'viewer';
+
+let _screen:       Screen    = 'home';
+let _connected     = false;
+let _identity:     OrgIdentity | null = null;
+let _logs:         SerializedLogEntry[] = [];
+let _loading       = false;
+let _logError:     string | null = null;
+let _openingLogId: string | null = null;
+let _searchQuery   = '';
+let _currentLog:   ParsedLog | null = null;
+let _refreshTimer: ReturnType<typeof setInterval> | null = null;
+let _txObserver:   IntersectionObserver | null = null;
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+
+function boot(): void {
+  render();
+  attachGlobalListeners();
+
+  // Listen for org status pushed from service worker
+  chrome.runtime.onMessage.addListener((msg: Record<string, unknown>) => {
+    if (msg.type === 'orgStatus') {
+      _connected = !!msg.connected;
+      _identity  = (msg.identity as OrgIdentity) ?? null;
+      if (_screen === 'home') renderBody();
+      if (_connected) { void fetchLogs(); startAutoRefresh(); }
+    }
+  });
+
+  // Ask service worker for current status
+  chrome.runtime.sendMessage({ type: 'getStatus' }, (res: { connected: boolean; identity: OrgIdentity | null }) => {
+    if (chrome.runtime.lastError) return;
+    _connected = res.connected;
+    _identity  = res.identity;
+    renderBody();
+    if (_connected) { void fetchLogs(); startAutoRefresh(); }
+  });
+}
+
+// ── Shell ─────────────────────────────────────────────────────────────────────
+
+function render(): void {
+  document.getElementById('app')!.innerHTML = /* html */`
+    <header class="home-header">
+      <div class="header-lens-wrap">
+        <svg class="header-lens-icon" viewBox="0 0 24 24" fill="none">
+          <circle cx="10" cy="10" r="6.5" stroke="currentColor" stroke-width="1.6"/>
+          <circle cx="10" cy="10" r="2.5" fill="currentColor" opacity="0.5"/>
+          <line x1="15.2" y1="15.2" x2="21.5" y2="21.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="header-text-wrap">
+        <span class="header-title">APEX</span>
+        <span class="header-title header-title-accent">LOG LENS</span>
+      </div>
+      <button class="btn btn-ghost btn-sm" id="btn-back" style="display:none;margin-left:auto">← Back</button>
+    </header>
+    <div id="panel-body"></div>
+  `;
+  renderBody();
+}
+
+function renderBody(): void {
+  const body = document.getElementById('panel-body');
+  if (!body) return;
+  if (_screen === 'viewer' && _currentLog) {
+    body.innerHTML = renderViewerScreen(_currentLog);
+    setupViewer(_currentLog);
+    document.getElementById('btn-back')!.style.display = '';
+  } else {
+    _screen = 'home';
+    body.innerHTML = renderHomeScreen();
+    document.getElementById('btn-back')!.style.display = 'none';
+  }
+}
+
+// ── Home screen ───────────────────────────────────────────────────────────────
+
+function renderHomeScreen(): string {
+  if (!_connected) return renderDisconnected();
+  return renderConnected();
+}
+
+function renderDisconnected(): string {
+  return /* html */`
+    <div class="connect-screen">
+      <div class="connect-icon-wrap">
+        <svg viewBox="0 0 48 48" fill="none" class="connect-cloud-icon">
+          <path d="M36 20.12A12 12 0 1 0 20.49 34H36a8 8 0 0 0 0-16z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
+          <line x1="24" y1="38" x2="24" y2="44" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          <line x1="18" y1="44" x2="30" y2="44" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <p class="connect-tagline">
+        Navigate to any Salesforce org in this tab — Apex Log Lens will connect automatically.
+      </p>
+      <div class="connect-divider"><span>How it works</span></div>
+      <ul class="connect-steps">
+        <li><span class="step-num">1</span>Open any <code>*.salesforce.com</code> page</li>
+        <li><span class="step-num">2</span>Logs load automatically from your session</li>
+        <li><span class="step-num">3</span>Click any log to analyze it here</li>
+      </ul>
+    </div>`;
+}
+
+function renderConnected(): string {
+  const orgLabel = _identity?.displayName ?? _identity?.userName ?? 'Connected';
+  const domain   = _identity?.instanceUrl
+    ? new URL(_identity.instanceUrl).hostname.replace(/\.my\.salesforce\.com$/, '').replace(/\.$/, '')
+    : '';
+
+  const filtered = _logs.filter(l => {
+    if (!_searchQuery) return true;
+    const q = _searchQuery.toLowerCase();
+    return l.operation.toLowerCase().includes(q) || l.application.toLowerCase().includes(q);
+  });
+
+  const listContent = _loading
+    ? `<div class="list-loading"><div class="spinner"></div><span>Fetching logs…</span></div>`
+    : _logError
+    ? `<div class="list-error">⚠ ${escHtml(_logError)}</div>`
+    : _logs.length === 0
+    ? `<div class="list-empty"><span class="empty-icon">📋</span><p>No logs yet.<br>Run some Apex, then refresh.</p></div>`
+    : filtered.length === 0
+    ? `<div class="list-empty"><span class="empty-icon">🔍</span><p>No logs match.</p></div>`
+    : filtered.map(renderLogItem).join('');
+
+  return /* html */`
+    <div class="org-bar">
+      <div class="org-info">
+        <span class="org-dot"></span>
+        <div class="org-text">
+          <span class="org-name">${escHtml(orgLabel)}</span>
+          ${domain ? `<span class="org-domain">${escHtml(domain)}</span>` : ''}
+        </div>
+      </div>
+      <button class="btn btn-ghost btn-sm" id="btn-disconnect" title="Disconnect">⏻</button>
+    </div>
+    <div class="log-toolbar">
+      <input type="text" id="log-search" class="log-search" placeholder="Search logs…" value="${escHtml(_searchQuery)}"/>
+      <button class="btn btn-ghost btn-icon-only" id="btn-refresh" title="Refresh" ${_loading ? 'disabled' : ''}>
+        <span class="${_loading ? 'spin' : ''}">↻</span>
+      </button>
+    </div>
+    <div class="log-list" id="log-list">${listContent}</div>
+    <div class="footer-note">Auto-refreshes every 30 s</div>`;
+}
+
+function renderLogItem(log: SerializedLogEntry): string {
+  const isOpening = _openingLogId === log.id;
+  const time      = relativeTime(new Date(log.lastModified));
+  const size      = formatBytes(log.sizeBytes);
+  const op        = log.operation.replace(/^Execute\s+/i, '').slice(0, 30) || log.application;
+  const dot       = log.status === 'Success' ? 'dot-ok' : log.status === 'Skipped' ? 'dot-warn' : 'dot-err';
+
+  return /* html */`
+    <div class="log-item ${isOpening ? 'log-item-opening' : ''}"
+         data-log-id="${escHtml(log.id)}" data-size="${log.sizeBytes}" role="button" tabindex="0">
+      <span class="log-status-dot ${dot}"></span>
+      <div class="log-item-body">
+        <span class="log-op">${escHtml(op)}</span>
+        <span class="log-meta">${escHtml(time)} · ${escHtml(size)} · ${log.durationMs}ms</span>
+      </div>
+      ${isOpening
+        ? `<span class="log-open-spinner"><div class="spinner spinner-sm"></div></span>`
+        : `<span class="log-chevron">›</span>`}
+    </div>`;
+}
+
+// ── Viewer screen ─────────────────────────────────────────────────────────────
+
+function renderViewerScreen(log: ParsedLog): string {
+  const phases     = log.transactions.flatMap(t => t.phases);
+  const callCount  = log.transactions.flatMap(t => t.callouts).length;
+  const dbgCount   = [...new Set(
+    log.transactions.flatMap(t => t.debugStatements).map(d => `${d.lineNumber}-${d.message}`)
+  )].length;
+  const hasAutomation = phases.some(p =>
+    ['BEFORE_TRIGGER','AFTER_TRIGGER','FLOW','PROCESS_BUILDER','VALIDATION_RULE','WORKFLOW_RULE'].includes(p.type)
+  );
+  const hasData = log.soqlStatements.length > 0 || log.dmlStatements.length > 0;
+
+  const tabs = [
+    { id: 'flow',       label: '⚡ Execution',  badge: null,        always: true,          error: log.summary.errorCount > 0 },
+    { id: 'issues',     label: '🚨 Issues',     badge: log.summary.errorCount, always: true, error: log.summary.errorCount > 0 },
+    { id: 'data',       label: '🗄 Data',       badge: null,        always: hasData,       error: false },
+    { id: 'automation', label: '⚙ Automation', badge: null,        always: hasAutomation, error: false },
+    { id: 'limits',     label: '📊 Limits',     badge: null,        always: true,          error: log.governorLimits.hasCritical },
+    { id: 'callouts',   label: '🌐 Callouts',   badge: callCount,   always: callCount > 0, error: false },
+    { id: 'debug',      label: '🐛 Debug',      badge: dbgCount,    always: dbgCount > 0,  error: false },
+    { id: 'raw',        label: 'Raw',           badge: null,        always: false,         error: false },
+  ].filter(t => t.always);
+
+  const tabBtns = tabs.map((t, i) => /* html */`
+    <button class="tab-btn ${i === 0 ? 'active' : ''} ${t.error ? 'tab-has-errors' : ''}"
+            data-tab="${t.id}" role="tab" aria-selected="${i === 0}">
+      ${t.label}${t.badge ? ` <span class="tab-badge ${t.error ? 'tab-badge-error' : ''}">${t.badge}</span>` : ''}
+    </button>`).join('');
+
+  const tabPanes = tabs.map((t, i) => /* html */`
+    <div id="tab-${t.id}" class="tab-pane ${i === 0 ? 'active' : 'hidden'}"></div>`).join('');
+
+  return /* html */`
+    <div class="sflog-app viewer-screen">
+      <div id="summary-header"></div>
+      <div class="tab-bar" role="tablist">${tabBtns}</div>
+      <div class="tab-content">${tabPanes}</div>
+    </div>`;
+}
+
+function setupViewer(log: ParsedLog): void {
+  document.getElementById('summary-header')!.innerHTML = renderSummaryHeader(log);
+
+  const renders: Record<string, () => string> = {
+    flow:       () => renderTransactions(log),
+    issues:     () => renderIssues(log),
+    data:       () => renderData(log),
+    automation: () => renderAutomation(log),
+    limits:     () => renderLimits(log, false, null),
+    callouts:   () => renderCallouts(log),
+    debug:      () => renderDebug(log),
+    raw:        () => renderRaw(log),
+  };
+
+  const rendered = new Set<string>();
+  function renderTab(id: string): void {
+    if (rendered.has(id)) return;
+    rendered.add(id);
+    const el = document.getElementById(`tab-${id}`);
+    if (el && renders[id]) el.innerHTML = renders[id]();
+    if (id === 'flow') setupTxLazyLoad(log);
+  }
+
+  // Auto-jump to issues if errors present
+  const firstTab = log.summary.errorCount > 0 ? 'issues' : 'flow';
+  renderTab(firstTab);
+  switchTab(firstTab);
+
+  document.querySelectorAll<HTMLButtonElement>('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tab = btn.dataset['tab']!;
+      renderTab(tab);
+      switchTab(tab);
+      if (tab === 'flow') setupTxLazyLoad(log);
+    });
+  });
+}
+
+function switchTab(tab: string): void {
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    const active = (btn as HTMLElement).dataset['tab'] === tab;
+    btn.classList.toggle('active', active);
+    btn.setAttribute('aria-selected', String(active));
+  });
+  document.querySelectorAll('.tab-pane').forEach(pane => {
+    const active = pane.id === `tab-${tab}`;
+    pane.classList.toggle('hidden', !active);
+    pane.classList.toggle('active', active);
+  });
+}
+
+// ── Lazy loading (same pattern as VS Code webview) ────────────────────────────
+
+function setupTxLazyLoad(log: ParsedLog): void {
+  _txObserver?.disconnect();
+  const sentinel = document.getElementById('tx-sentinel') as HTMLElement | null;
+  if (!sentinel) return;
+
+  _txObserver = new IntersectionObserver(entries => {
+    if (!entries[0].isIntersecting) return;
+    const next  = parseInt(sentinel.dataset['next'] ?? '20', 10);
+    const batch = log.transactions.slice(next, next + TX_SCROLL_BATCH);
+    if (batch.length === 0) { _txObserver?.disconnect(); sentinel.remove(); return; }
+
+    const list = document.getElementById('tx-list');
+    if (!list) return;
+    batch.forEach((tx, i) => {
+      const wrap = document.createElement('div');
+      wrap.innerHTML = renderTransactionCard(tx, next + i + 1);
+      if (wrap.firstElementChild) list.appendChild(wrap.firstElementChild);
+    });
+    sentinel.dataset['next'] = String(next + batch.length);
+    if (next + batch.length >= log.transactions.length) { _txObserver?.disconnect(); sentinel.remove(); }
+  }, { rootMargin: '400px' });
+
+  _txObserver.observe(sentinel);
+}
+
+// ── Event delegation ──────────────────────────────────────────────────────────
+
+function attachGlobalListeners(): void {
+  document.addEventListener('click', e => {
+    const t = e.target as HTMLElement;
+
+    if (t.closest('#btn-back')) {
+      _screen = 'home';
+      _currentLog = null;
+      renderBody();
+      return;
+    }
+
+    if (t.closest('#btn-disconnect')) {
+      chrome.runtime.sendMessage({ type: 'disconnect' });
+      _connected = false; _identity = null; _logs = [];
+      stopAutoRefresh();
+      renderBody();
+      return;
+    }
+
+    if (t.closest('#btn-refresh')) {
+      void fetchLogs();
+      return;
+    }
+
+    // Log item click
+    const logItem = t.closest<HTMLElement>('.log-item');
+    if (logItem?.dataset['logId']) {
+      _openingLogId = logItem.dataset['logId'];
+      renderBody();
+      chrome.runtime.sendMessage(
+        { type: 'fetchLog', logId: logItem.dataset['logId'], sizeBytes: parseInt(logItem.dataset['size'] ?? '0', 10) },
+        (res: { ok?: boolean; parsedLog?: ParsedLog; error?: string }) => {
+          _openingLogId = null;
+          if (res?.ok && res.parsedLog) {
+            _currentLog = res.parsedLog;
+            _screen     = 'viewer';
+          } else {
+            _logError = res?.error ?? 'Failed to open log';
+          }
+          renderBody();
+          if (_screen === 'viewer') attachViewerListeners();
+        }
+      );
+      return;
+    }
+
+    // Viewer interactions
+    handleViewerClick(e);
+  });
+
+  document.addEventListener('input', e => {
+    if ((e.target as HTMLElement).id === 'log-search') {
+      _searchQuery = ((e.target as HTMLInputElement).value ?? '').trim();
+      renderBody();
+    }
+  });
+}
+
+function attachViewerListeners(): void {
+  // Phase pill expand/collapse
+  document.addEventListener('click', e => {
+    const pill = (e.target as HTMLElement).closest('.phase-pill') as HTMLElement | null;
+    if (!pill) return;
+    e.stopPropagation();
+    const detail = document.getElementById(`phase-detail-${pill.dataset['phaseId']}`);
+    if (detail) {
+      const opening = !detail.classList.contains('pd-open');
+      detail.classList.toggle('pd-open', opening);
+      pill.classList.toggle('active', opening);
+    }
+  });
+
+  // Transaction card collapse
+  document.addEventListener('click', e => {
+    const header = (e.target as HTMLElement).closest('.tx-header') as HTMLElement | null;
+    if (header) header.closest('.tx-card')?.classList.toggle('collapsed');
+  });
+
+  // Search
+  document.addEventListener('input', e => {
+    const input = e.target as HTMLElement;
+    if (input.id !== 'tx-search') return;
+    const q = (input as HTMLInputElement).value.toLowerCase().trim();
+    document.querySelectorAll<HTMLElement>('.tx-card').forEach(card => {
+      card.classList.toggle('tx-hidden', !(!q || (card.dataset['searchText'] ?? '').toLowerCase().includes(q)));
+    });
+  });
+}
+
+function handleViewerClick(e: MouseEvent): void {
+  // Jump to line (no-op in Chrome — kept for future integration)
+  const lineEl = (e.target as HTMLElement).closest('[data-line]') as HTMLElement | null;
+  if (lineEl?.dataset['line']) {
+    // Could open the raw tab or highlight
+  }
+}
+
+// ── Data fetching ─────────────────────────────────────────────────────────────
+
+async function fetchLogs(): Promise<void> {
+  _loading = true; _logError = null;
+  if (_screen === 'home') renderBody();
+
+  chrome.runtime.sendMessage({ type: 'fetchLogs' }, (res: { logs?: SerializedLogEntry[]; error?: string }) => {
+    _loading = false;
+    if (res?.logs)  { _logs = res.logs; }
+    else            { _logError = res?.error ?? 'Failed to fetch logs'; }
+    if (_screen === 'home') renderBody();
+  });
+}
+
+function startAutoRefresh(): void {
+  stopAutoRefresh();
+  _refreshTimer = setInterval(() => { if (_screen === 'home' && _connected) void fetchLogs(); }, 30_000);
+}
+
+function stopAutoRefresh(): void {
+  if (_refreshTimer) { clearInterval(_refreshTimer); _refreshTimer = null; }
+}
+
+// ── Utilities ─────────────────────────────────────────────────────────────────
+
+function escHtml(s: string): string {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function formatBytes(b: number): string {
+  if (b < 1024) return `${b}B`;
+  if (b < 1024*1024) return `${(b/1024).toFixed(0)}KB`;
+  return `${(b/1024/1024).toFixed(1)}MB`;
+}
+function relativeTime(d: Date): string {
+  const s = Math.floor((Date.now() - d.getTime()) / 1000);
+  if (s < 60) return `${s}s ago`;
+  const m = Math.floor(s/60);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m/60);
+  if (h < 24) return `${h}h ago`;
+  return d.toLocaleDateString('en-US', { month:'short', day:'numeric' });
+}
+
+// ── Entry ─────────────────────────────────────────────────────────────────────
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', boot);
+} else {
+  boot();
+}
