@@ -206,26 +206,21 @@ function renderLogItem(log: SerializedLogEntry): string {
 // ── Viewer screen ─────────────────────────────────────────────────────────────
 
 function renderViewerScreen(log: ParsedLog): string {
-  const phases     = log.transactions.flatMap(t => t.phases);
   const callCount  = log.transactions.flatMap(t => t.callouts).length;
   const dbgCount   = [...new Set(
     log.transactions.flatMap(t => t.debugStatements).map(d => `${d.lineNumber}-${d.message}`)
   )].length;
-  const hasAutomation = phases.some(p =>
-    ['BEFORE_TRIGGER','AFTER_TRIGGER','FLOW','PROCESS_BUILDER','VALIDATION_RULE','WORKFLOW_RULE'].includes(p.type)
-  );
-  const hasData = log.soqlStatements.length > 0 || log.dmlStatements.length > 0;
 
   const tabs = [
-    { id: 'flow',       label: '⚡ Execution',  badge: null,        always: true,          error: log.summary.errorCount > 0 },
-    { id: 'issues',     label: '🚨 Issues',     badge: log.summary.errorCount, always: true, error: log.summary.errorCount > 0 },
-    { id: 'data',       label: '🗄 Data',       badge: null,        always: hasData,       error: false },
-    { id: 'automation', label: '⚙ Automation', badge: null,        always: hasAutomation, error: false },
-    { id: 'limits',     label: '📊 Limits',     badge: null,        always: true,          error: log.governorLimits.hasCritical },
-    { id: 'callouts',   label: '🌐 Callouts',   badge: callCount,   always: callCount > 0, error: false },
-    { id: 'debug',      label: '🐛 Debug',      badge: dbgCount,    always: dbgCount > 0,  error: false },
-    { id: 'raw',        label: 'Raw',           badge: null,        always: false,         error: false },
-  ].filter(t => t.always);
+    { id: 'flow',       label: '⚡ Execution',  badge: null,        error: log.summary.errorCount > 0 },
+    { id: 'issues',     label: '🚨 Issues',     badge: log.summary.errorCount, error: log.summary.errorCount > 0 },
+    { id: 'data',       label: '🗄 Data',       badge: null,        error: false },
+    { id: 'automation', label: '⚙ Auto',        badge: null,        error: false },
+    { id: 'limits',     label: '📊 Limits',     badge: null,        error: log.governorLimits.hasCritical },
+    { id: 'callouts',   label: '🌐 Callouts',   badge: callCount || null,   error: false },
+    { id: 'debug',      label: '🐛 Debug',      badge: dbgCount || null,    error: false },
+    { id: 'raw',        label: '📄 Raw',        badge: null,        error: false },
+  ];
 
   const tabBtns = tabs.map((t, i) => /* html */`
     <button class="tab-btn ${i === 0 ? 'active' : ''} ${t.error ? 'tab-has-errors' : ''}"
