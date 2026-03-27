@@ -44,8 +44,9 @@ let _logError:     string | null = null;
 let _openingLogId: string | null = null;
 let _searchQuery   = '';
 let _currentLog:   ParsedLog | null = null;
-let _refreshTimer: ReturnType<typeof setInterval> | null = null;
-let _txObserver:   IntersectionObserver | null = null;
+let _refreshTimer:    ReturnType<typeof setInterval> | null = null;
+let _txObserver:      IntersectionObserver | null = null;
+let _viewerAbort:     AbortController | null = null;
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
 
@@ -156,6 +157,12 @@ function renderConnected(): string {
     ? `<div class="list-empty"><span class="empty-icon">🔍</span><p>No logs match.</p></div>`
     : filtered.map(renderLogItem).join('');
 
+  const limitsBtn = _logs.length === 0 && !_loading && !_logError
+    ? `<button class="btn btn-ghost btn-sm" id="btn-view-org-limits" style="margin:12px auto;display:flex;gap:6px;align-items:center">
+         📊 View Org Limits
+       </button>`
+    : '';
+
   return /* html */`
     <div class="org-bar">
       <div class="org-info">
@@ -174,6 +181,7 @@ function renderConnected(): string {
       </button>
     </div>
     <div class="log-list" id="log-list">${listContent}</div>
+    ${limitsBtn}
     <div class="footer-note">Auto-refreshes every 30 s</div>`;
 }
 
@@ -333,6 +341,11 @@ function attachGlobalListeners(): void {
       return;
     }
 
+    if (t.closest('#btn-view-org-limits')) {
+      showOrgLimitsScreen();
+      return;
+    }
+
     if (t.closest('#btn-disconnect')) {
       chrome.runtime.sendMessage({ type: 'disconnect' });
       _connected = false; _identity = null; _logs = [];
@@ -397,6 +410,11 @@ function attachGlobalListeners(): void {
 }
 
 function attachViewerListeners(): void {
+  // Abort previous listener set to prevent accumulation across log opens
+  _viewerAbort?.abort();
+  _viewerAbort = new AbortController();
+  const { signal } = _viewerAbort;
+
   // Phase pill expand/collapse
   document.addEventListener('click', e => {
     const pill = (e.target as HTMLElement).closest('.phase-pill') as HTMLElement | null;
@@ -408,13 +426,13 @@ function attachViewerListeners(): void {
       detail.classList.toggle('pd-open', opening);
       pill.classList.toggle('active', opening);
     }
-  });
+  }, { signal });
 
   // Transaction card collapse
   document.addEventListener('click', e => {
     const header = (e.target as HTMLElement).closest('.tx-header') as HTMLElement | null;
     if (header) header.closest('.tx-card')?.classList.toggle('collapsed');
-  });
+  }, { signal });
 
   // Search
   document.addEventListener('input', e => {
@@ -424,7 +442,7 @@ function attachViewerListeners(): void {
     document.querySelectorAll<HTMLElement>('.tx-card').forEach(card => {
       card.classList.toggle('tx-hidden', !(!q || (card.dataset['searchText'] ?? '').toLowerCase().includes(q)));
     });
-  });
+  }, { signal });
 }
 
 function handleViewerClick(e: MouseEvent): void {
@@ -469,6 +487,28 @@ function openLogInNewTab(log: ParsedLog): void {
   const blob = new Blob([html], { type: 'text/html' });
   const url  = URL.createObjectURL(blob);
   window.open(url, '_blank');
+}
+
+function showOrgLimitsScreen(): void {
+  const body = document.getElementById('panel-body');
+  if (!body) return;
+  body.innerHTML = /* html */`
+    <div style="display:flex;flex-direction:column;height:100%">
+      <div style="padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-shrink:0">
+        <button class="btn btn-ghost btn-sm" id="btn-limits-back">← Back</button>
+        <span style="font-size:11px;font-weight:600;letter-spacing:0.08em;color:var(--fg-muted);text-transform:uppercase">Org Governor Limits</span>
+      </div>
+      <div style="flex:1;overflow-y:auto;padding:12px 14px">
+        <div id="org-loading" class="org-loading" style="padding:24px 0;text-align:center;color:var(--fg-muted);font-size:12px">
+          <div class="spinner" style="margin:0 auto 8px"></div>
+          Loading org limits…
+        </div>
+        <div id="org-content" style="display:none"></div>
+      </div>
+    </div>`;
+
+  document.getElementById('btn-limits-back')?.addEventListener('click', () => renderBody());
+  fetchAndRenderOrgLimits();
 }
 
 function fetchAndRenderOrgLimits(): void {
