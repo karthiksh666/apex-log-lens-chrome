@@ -2,6 +2,7 @@ import type { ParsedLog } from '../parser/types';
 import type { Transaction, ExecutionPhase, PhaseType } from '../parser/transaction-types';
 import { phaseTypeClass } from '../parser/PhaseClassifier';
 import { formatDuration } from '../utils/TimeUtils';
+import { renderFlowchart } from './FlowchartRenderer';
 
 /** Number of cards rendered immediately; the rest load on scroll. */
 export const TX_INITIAL_BATCH = 20;
@@ -27,19 +28,28 @@ export function renderTransactions(log: ParsedLog): string {
   const hasMore  = log.transactions.length > TX_INITIAL_BATCH;
   const cards    = initial.map((tx, i) => renderTransactionCard(tx, i + 1)).join('');
 
+  const treeContent = /* html */`
+    <div class="tx-toolbar">
+      <span class="tx-count">${log.transactions.length} execution${log.transactions.length > 1 ? 's' : ''} in this log</span>
+      <input class="search-input" type="text" placeholder="Search..." id="tx-search" />
+    </div>
+    <div class="tx-list" id="tx-list">
+      ${cards}
+    </div>
+    ${hasMore ? /* html */`
+      <div id="tx-sentinel" data-next="${TX_INITIAL_BATCH}" style="height:1px"></div>
+      <div class="tx-loading-more">Loading more executions…</div>
+    ` : ''}
+  `;
+
   return /* html */`
     <div class="transactions-view">
-      <div class="tx-toolbar">
-        <span class="tx-count">${log.transactions.length} execution${log.transactions.length > 1 ? 's' : ''} in this log</span>
-        <input class="search-input" type="text" placeholder="Search..." id="tx-search" />
+      <div class="fc-toggle-bar">
+        <button class="fc-toggle-btn fc-toggle-active" data-view="tree">🌳 Tree</button>
+        <button class="fc-toggle-btn" data-view="flow">🔀 Flow</button>
       </div>
-      <div class="tx-list" id="tx-list">
-        ${cards}
-      </div>
-      ${hasMore ? /* html */`
-        <div id="tx-sentinel" data-next="${TX_INITIAL_BATCH}" style="height:1px"></div>
-        <div class="tx-loading-more">Loading more executions…</div>
-      ` : ''}
+      <div id="fc-tree-view">${treeContent}</div>
+      <div id="fc-flow-view" style="display:none">${renderFlowchart(log)}</div>
     </div>
   `;
 }

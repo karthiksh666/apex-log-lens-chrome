@@ -434,6 +434,19 @@ function attachViewerListeners(): void {
     if (header) header.closest('.tx-card')?.classList.toggle('collapsed');
   }, { signal });
 
+  // Flowchart / tree toggle
+  document.addEventListener('click', e => {
+    const btn = (e.target as HTMLElement).closest('.fc-toggle-btn') as HTMLElement | null;
+    if (!btn) return;
+    const view = btn.dataset['view'];
+    document.querySelectorAll('.fc-toggle-btn').forEach(b => b.classList.remove('fc-toggle-active'));
+    btn.classList.add('fc-toggle-active');
+    const tree = document.getElementById('fc-tree-view');
+    const flow = document.getElementById('fc-flow-view');
+    if (tree) tree.style.display = view === 'flow' ? 'none' : '';
+    if (flow) flow.style.display = view === 'flow' ? '' : 'none';
+  }, { signal });
+
   // Search
   document.addEventListener('input', e => {
     const input = e.target as HTMLElement;
