@@ -46,20 +46,5 @@ export function renderAutomation(log: ParsedLog): string {
       <div class="seg-bar">${segBtns}</div>
       ${panes}
     </div>
-    <script>
-    (function() {
-      document.querySelectorAll('.auto-tab-view .seg-btn').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-          var id = btn.dataset.seg;
-          btn.closest('.auto-tab-view').querySelectorAll('.seg-btn').forEach(function(b) {
-            b.classList.toggle('seg-active', b === btn);
-          });
-          btn.closest('.auto-tab-view').querySelectorAll('.seg-pane').forEach(function(p) {
-            p.classList.toggle('seg-pane-active', p.id === 'seg-auto-' + id);
-          });
-        });
-      });
-    })();
-    </script>
   `;
 }

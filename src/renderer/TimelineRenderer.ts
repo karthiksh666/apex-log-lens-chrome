@@ -29,49 +29,6 @@ export function renderTimeline(log: ParsedLog): string {
         ${rows}
       </div>
     </div>
-    <script>
-      (function() {
-        // Category filter chips
-        document.querySelectorAll('.filter-chip').forEach(function(chip) {
-          chip.addEventListener('click', function() {
-            chip.classList.toggle('active');
-            applyFilters();
-          });
-        });
-
-        // Search box
-        var searchEl = document.getElementById('timeline-search');
-        if (searchEl) {
-          searchEl.addEventListener('input', function() { applyFilters(); });
-        }
-
-        function applyFilters() {
-          var activeCategories = Array.from(document.querySelectorAll('.filter-chip.active'))
-            .map(function(c) { return c.dataset.category; });
-          var searchText = (searchEl ? searchEl.value : '').toLowerCase();
-
-          document.querySelectorAll('.event-row').forEach(function(row) {
-            var cat = row.dataset.category;
-            var text = row.dataset.searchText || '';
-            var catMatch = activeCategories.length === 0 || activeCategories.includes(cat);
-            var textMatch = !searchText || text.includes(searchText);
-            row.classList.toggle('hidden', !(catMatch && textMatch));
-          });
-        }
-
-        // Expand/collapse event details
-        document.querySelectorAll('.event-row').forEach(function(row) {
-          row.addEventListener('click', function(e) {
-            if (e.target.closest('[data-copy]') || e.target.closest('[data-line]')) return;
-            row.classList.toggle('expanded');
-            var detail = row.nextElementSibling;
-            if (detail && detail.classList.contains('event-detail')) {
-              detail.classList.toggle('hidden');
-            }
-          });
-        });
-      })();
-    </script>
   `;
 }
 

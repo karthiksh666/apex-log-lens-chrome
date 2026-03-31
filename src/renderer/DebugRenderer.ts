@@ -40,20 +40,6 @@ export function renderDebug(log: ParsedLog): string {
         ${rows}
       </div>
     </div>
-    <script>
-    (function() {
-      var search = document.getElementById('debug-search');
-      if (search) {
-        search.addEventListener('input', function() {
-          var q = search.value.toLowerCase();
-          document.querySelectorAll('#debug-list .debug-row').forEach(function(row) {
-            var text = row.textContent.toLowerCase();
-            row.classList.toggle('hidden', !!q && !text.includes(q));
-          });
-        });
-      }
-    })();
-    </script>
   `;
 }
 

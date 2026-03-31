@@ -11,14 +11,15 @@
   "permissions": [
     "sidePanel",
     "cookies",
-    "activeTab",
     "storage"
   ],
   "host_permissions": [
     "https://*.salesforce.com/*",
-    "https://*.force.com/*",
-    "https://*.my.salesforce.com/*"
+    "https://*.force.com/*"
   ],
+  "content_security_policy": {
+    "extension_pages": "default-src 'self'; connect-src https://*.salesforce.com https://*.force.com https://*.my.salesforce.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:;"
+  },
   "background": {
     "service_worker": "dist/service-worker.js"
   },

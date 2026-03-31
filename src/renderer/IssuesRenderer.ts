@@ -35,20 +35,5 @@ export function renderIssues(log: ParsedLog): string {
         ${qualityHtml}
       </div>
     </div>
-    <script>
-    (function() {
-      document.querySelectorAll('.seg-btn').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-          var id = btn.dataset.seg;
-          document.querySelectorAll('.seg-btn').forEach(function(b) {
-            b.classList.toggle('seg-active', b === btn);
-          });
-          document.querySelectorAll('.seg-pane').forEach(function(p) {
-            p.classList.toggle('seg-pane-active', p.id === 'seg-' + id);
-          });
-        });
-      });
-    })();
-    </script>
   `;
 }

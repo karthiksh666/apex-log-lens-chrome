@@ -31,20 +31,5 @@ export function renderData(log: ParsedLog): string {
       <div class="seg-pane"                 id="seg-soql">${renderSoql(log)}</div>
       <div class="seg-pane"                 id="seg-dml">${renderDml(log)}</div>
     </div>
-    <script>
-    (function() {
-      document.querySelectorAll('.data-tab-view .seg-btn').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-          var id = btn.dataset.seg;
-          btn.closest('.data-tab-view').querySelectorAll('.seg-btn').forEach(function(b) {
-            b.classList.toggle('seg-active', b === btn);
-          });
-          btn.closest('.data-tab-view').querySelectorAll('.seg-pane').forEach(function(p) {
-            p.classList.toggle('seg-pane-active', p.id === 'seg-' + id);
-          });
-        });
-      });
-    })();
-    </script>
   `;
 }

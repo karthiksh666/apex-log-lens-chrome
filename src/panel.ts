@@ -415,6 +415,69 @@ function attachViewerListeners(): void {
   _viewerAbort = new AbortController();
   const { signal } = _viewerAbort;
 
+  // Segment switcher — .auto-tab-view, .data-tab-view, .issues-view
+  document.addEventListener('click', e => {
+    const btn = (e.target as HTMLElement).closest<HTMLElement>('.seg-btn');
+    if (!btn) return;
+    const id = btn.dataset['seg'];
+    if (!id) return;
+    const view = btn.closest<HTMLElement>('.auto-tab-view, .data-tab-view, .issues-view');
+    if (!view) return;
+    view.querySelectorAll('.seg-btn').forEach(b => b.classList.toggle('seg-active', b === btn));
+    view.querySelectorAll<HTMLElement>('.seg-pane').forEach(p => {
+      // auto-tab-view uses "seg-auto-<id>", others use "seg-<id>"
+      const match = view.classList.contains('auto-tab-view')
+        ? p.id === `seg-auto-${id}`
+        : p.id === `seg-${id}`;
+      p.classList.toggle('seg-pane-active', match);
+    });
+  }, { signal });
+
+  // Debug search (#debug-search filters .debug-row inside #debug-list)
+  document.addEventListener('input', e => {
+    const input = e.target as HTMLElement;
+    if (input.id !== 'debug-search') return;
+    const q = (input as HTMLInputElement).value.toLowerCase();
+    document.querySelectorAll<HTMLElement>('#debug-list .debug-row').forEach(row => {
+      row.classList.toggle('hidden', !!q && !(row.textContent ?? '').toLowerCase().includes(q));
+    });
+  }, { signal });
+
+  // Timeline filter chips + search
+  document.addEventListener('click', e => {
+    const chip = (e.target as HTMLElement).closest<HTMLElement>('.filter-chip');
+    if (!chip) return;
+    chip.classList.toggle('active');
+    applyTimelineFilters();
+  }, { signal });
+
+  document.addEventListener('input', e => {
+    if ((e.target as HTMLElement).id === 'timeline-search') applyTimelineFilters();
+  }, { signal });
+
+  function applyTimelineFilters(): void {
+    const activeCategories = Array.from(document.querySelectorAll<HTMLElement>('.filter-chip.active'))
+      .map(c => c.dataset['category']);
+    const searchEl = document.getElementById('timeline-search') as HTMLInputElement | null;
+    const searchText = (searchEl?.value ?? '').toLowerCase();
+    document.querySelectorAll<HTMLElement>('.event-row').forEach(row => {
+      const catMatch = activeCategories.length === 0 || activeCategories.includes(row.dataset['category'] ?? '');
+      const textMatch = !searchText || (row.dataset['searchText'] ?? '').toLowerCase().includes(searchText);
+      row.classList.toggle('hidden', !(catMatch && textMatch));
+    });
+  }
+
+  // Timeline event-row expand/collapse
+  document.addEventListener('click', e => {
+    const target = e.target as HTMLElement;
+    if (target.closest('[data-copy]') || target.closest('[data-line]')) return;
+    const row = target.closest<HTMLElement>('.event-row');
+    if (!row) return;
+    row.classList.toggle('expanded');
+    const detail = row.nextElementSibling as HTMLElement | null;
+    if (detail?.classList.contains('event-detail')) detail.classList.toggle('hidden');
+  }, { signal });
+
   // Phase pill expand/collapse
   document.addEventListener('click', e => {
     const pill = (e.target as HTMLElement).closest('.phase-pill') as HTMLElement | null;
@@ -486,6 +549,7 @@ function openLogInNewTab(log: ParsedLog): void {
 <html lang="en">
 <head>
   <meta charset="UTF-8"/>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' chrome-extension:; style-src chrome-extension: 'unsafe-inline';">
   <title>${escHtml(logName)}</title>
   <link rel="stylesheet" href="${chrome.runtime.getURL('styles/panel.css')}"/>
   <link rel="stylesheet" href="${chrome.runtime.getURL('styles/viewer.css')}"/>

@@ -79,6 +79,9 @@ export async function validateAndIdentify(
 // ── Log list ──────────────────────────────────────────────────────────────────
 
 export async function fetchLogList(userId: string, limit = 30): Promise<OrgLogEntry[]> {
+  if (!/^[a-zA-Z0-9]{15,18}$/.test(userId)) {
+    throw new Error('Invalid userId format');
+  }
   const query = encodeURIComponent(
     `SELECT Id, LogUser.Id, LogUser.Name, LogLength, LastModifiedDate, ` +
     `Status, Operation, Application, DurationMilliseconds, Location ` +
