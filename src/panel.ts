@@ -47,6 +47,7 @@ let _currentLog:   ParsedLog | null = null;
 let _refreshTimer:    ReturnType<typeof setInterval> | null = null;
 let _txObserver:      IntersectionObserver | null = null;
 let _viewerAbort:     AbortController | null = null;
+let _renderTab:       ((tab: string) => void) | null = null;
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
 
@@ -273,14 +274,12 @@ function setupViewer(log: ParsedLog): void {
   renderTab(firstTab);
   switchTab(firstTab);
 
-  document.querySelectorAll<HTMLButtonElement>('.tab-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const tab = btn.dataset['tab']!;
-      renderTab(tab);
-      switchTab(tab);
-      if (tab === 'flow') setupTxLazyLoad(log);
-    });
-  });
+  // Tab switching handled via global event delegation in attachGlobalListeners
+  // Store renderTab so the global handler can call it
+  _renderTab = (tab: string) => {
+    renderTab(tab);
+    if (tab === 'flow') setupTxLazyLoad(log);
+  };
 }
 
 function switchTab(tab: string): void {
@@ -394,6 +393,15 @@ function attachGlobalListeners(): void {
     const cqHeader = t.closest('[data-toggle-cq]') as HTMLElement | null;
     if (cqHeader) {
       cqHeader.closest('.cq-card')?.classList.toggle('cq-expanded');
+      return;
+    }
+
+    // Tab switching
+    const tabBtn = t.closest<HTMLElement>('.tab-btn');
+    if (tabBtn?.dataset['tab']) {
+      const tab = tabBtn.dataset['tab'];
+      _renderTab?.(tab);
+      switchTab(tab);
       return;
     }
 
