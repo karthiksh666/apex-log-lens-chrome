@@ -29,34 +29,6 @@ let _identity: Identity | null = null;
 
 // ── Open side panel on action click ──────────────────────────────────────────
 
-// Disable side panel by default — only enable on Salesforce tabs
-chrome.runtime.onInstalled.addListener(() => {
-  chrome.sidePanel.setOptions({ enabled: false }).catch(() => {});
-});
-
-chrome.tabs.onActivated.addListener(async ({ tabId }) => {
-  try {
-    const tab = await chrome.tabs.get(tabId);
-    const isSalesforce = isSalesforceUrl(tab.url ?? '');
-    await chrome.sidePanel.setOptions({ tabId, enabled: isSalesforce });
-  } catch { /* tab may not exist */ }
-});
-
-chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
-  if (changeInfo.status !== 'complete') return;
-  try {
-    const isSalesforce = isSalesforceUrl(tab.url ?? '');
-    await chrome.sidePanel.setOptions({ tabId, enabled: isSalesforce });
-  } catch { /* ignore */ }
-});
-
-function isSalesforceUrl(url: string): boolean {
-  try {
-    const host = new URL(url).hostname;
-    return host.endsWith('.salesforce.com') || host.endsWith('.force.com');
-  } catch { return false; }
-}
-
 chrome.action.onClicked.addListener((tab) => {
   if (tab.id) {
     chrome.sidePanel.open({ tabId: tab.id }).catch(() => {});
